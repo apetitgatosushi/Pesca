@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roleta da Sorte - Apetit Gatô Sushi</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: #fff7f2;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #e63946;
+    }
+    canvas {
+      border: 8px solid #e63946;
+      border-radius: 50%;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      background: #e63946;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #d62828;
+    }
+    #resultado {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎉 Roleta da Sorte - Apetit Gatô Sushi 🎉</h1>
+  <canvas id="roleta" width="400" height="400"></canvas>
+  <button onclick="girarRoleta()">Girar Roleta</button>
+  <div id="resultado"></div>
+
+  <script>
+    const canvas = document.getElementById("roleta");
+    const ctx = canvas.getContext("2d");
+    const premios = [
+      "Coca Lata Café",
+      "Meio Uramaki",
+      "Meio Hossomaki",
+      "Suco Kappo",
+      "10% de desconto",
+      "Surpresa"
+    ];
+
+    let startAngle = 0;
+    const arc = Math.PI * 2 / premios.length;
+    let spinTimeout = null;
+
+    function desenharRoleta() {
+      for (let i = 0; i < premios.length; i++) {
+        const angle = startAngle + i * arc;
+        ctx.beginPath();
+        ctx.fillStyle = i % 2 === 0 ? "#f1faee" : "#a8dadc";
+        ctx.moveTo(200, 200);
+        ctx.arc(200, 200, 200, angle, angle + arc);
+        ctx.lineTo(200, 200);
+        ctx.fill();
+        ctx.save();
+
+        ctx.translate(200, 200);
+        ctx.rotate(angle + arc / 2);
+        ctx.fillStyle = "#1d3557";
+        ctx.font = "16px Arial";
+        ctx.fillText(premios[i], 100, 10);
+        ctx.restore();
+      }
+    }
+
+    function girarRoleta() {
+      const giro = Math.floor(Math.random() * 360) + 1800; // mínimo 5 voltas
+      const duracao = 4000; // 4 segundos
+      const inicio = performance.now();
+
+      function animar(tempo) {
+        const progresso = Math.min((tempo - inicio) / duracao, 1);
+        startAngle = (giro * progresso * Math.PI / 180);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        desenharRoleta();
+
+        if (progresso < 1) {
+          requestAnimationFrame(animar);
+        } else {
+          mostrarResultado(startAngle);
+        }
+      }
+      requestAnimationFrame(animar);
+    }
+
+    function mostrarResultado(anguloFinal) {
+      const graus = (anguloFinal * 180 / Math.PI) % 360;
+      const indice = Math.floor((360 - graus) / (360 / premios.length)) % premios.length;
+      const premio = premios[indice];
+      document.getElementById("resultado").textContent = "🎁 Você ganhou: " + premio + "!";
+
+      // Confete simples
+      for (let i = 0; i < 30; i++) {
+        const confete = document.createElement("div");
+        confete.textContent = "🎊";
+        confete.style.position = "fixed";
+        confete.style.left = Math.random() * window.innerWidth + "px";
+        confete.style.top = "-20px";
+        confete.style.fontSize = "24px";
+        confete.style.animation = `cair ${2 + Math.random() * 3}s linear forwards`;
+        document.body.appendChild(confete);
+        setTimeout(() => confete.remove(), 5000);
+      }
+    }
+
+    desenharRoleta();
+  </script>
+
+  <style>
+    @keyframes cair {
+      to {
+        transform: translateY(100vh);
+        opacity: 0;
+      }
+    }
+  </style>
+</body>
+</html>
