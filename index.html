@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gato Premiado 🐱✨</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(-45deg, #000, #111, #222, #000);
+      background-size: 400% 400%;
+      animation: gradient 10s ease infinite;
+      font-family: 'Poppins', sans-serif;
+      color: white;
+      text-align: center;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    h1 {
+      margin: 10px 0;
+      font-size: 2.5em;
+      color: gold;
+      text-shadow: 0 0 15px rgba(255,215,0,0.8);
+    }
+    #timer {
+      font-size: 1.5em;
+      color: gold;
+      text-shadow: 0 0 10px black;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: transparent;
+    }
+    #prizeBox {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: #111;
+      border: 3px solid gold;
+      border-radius: 20px;
+      padding: 30px 50px;
+      font-size: 2em;
+      color: gold;
+      text-shadow: 0 0 10px black;
+      animation: none;
+      z-index: 10;
+    }
+    @keyframes pop {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); }
+    }
+    /* Gatinho emoji */
+    #cat {
+      position: absolute;
+      bottom: 50px;
+      left: 20px;
+      font-size: 60px;
+      animation: wiggle 2s infinite alternate;
+    }
+    @keyframes wiggle {
+      from { transform: rotate(-5deg); }
+      to { transform: rotate(5deg); }
+    }
+    #speech {
+      position: absolute;
+      bottom: 120px;
+      left: 80px;
+      background: #fff;
+      color: #000;
+      padding: 10px 15px;
+      border-radius: 10px;
+      font-size: 1em;
+      display: none;
+    }
+    /* Créditos sutis */
+    #credits-left {
+      position: fixed;
+      bottom: 5px;
+      left: 10px;
+      font-size: 12px;
+      color: #aaa;
+    }
+    #credits-right {
+      position: fixed;
+      bottom: 5px;
+      right: 10px;
+      font-size: 12px;
+      color: #aaa;
+    }
+    /* Efeito clique */
+    .clickEffect {
+      position: absolute;
+      font-size: 24px;
+      color: gold;
+      pointer-events: none;
+      animation: popFade 0.8s ease-out forwards;
+    }
+    @keyframes popFade {
+      0% { transform: scale(0.5); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.9; }
+      100% { transform: scale(1); opacity: 0; top: -20px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🐱 Gato Premiado 🐟</h1>
+  <div id="timer">Tempo: 60s</div>
+  <canvas id="gameCanvas" width="800" height="500"></canvas>
+  <div id="prizeBox"></div>
+  <div id="cat">🐱</div>
+  <div id="speech">Vai nessa, você consegue!</div>
+
+  <div id="credits-left">Apetit Gatô Sushi</div>
+  <div id="credits-right">By Maria Baniski</div>
+  
+  <audio id="catchSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7b8f0ec6da.mp3"></audio>
+  <audio id="failSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_77dbb07a72.mp3"></audio>
+  <audio id="winSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_f6d7bbf39a.mp3"></audio>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const prizeBox = document.getElementById("prizeBox");
+    const timerEl = document.getElementById("timer");
+    const speech = document.getElementById("speech");
+
+    let attempts = true;
+    let gameOver = false;
+    let timeLeft = 60;
+    let startTime = Date.now();
+    const minWinTime = 10000; // 10 segundos
+
+    // Bloqueio por dia
+    const today = new Date().toISOString().split("T")[0];
+    const lastWin = localStorage.getItem("lastWinDate");
+    if (lastWin === today) {
+      attempts = false;
+      gameOver = true;
+      speech.innerText = "Miauu! Você já ganhou hoje 🐾 volte amanhã!";
+      speech.style.display = "block";
+    }
+
+    const prizes = [
+      "Suco Kappo",
+      "Coca Cola Café",
+      "Sobremesa",
+      "Harumaki",
+      "Porção Surpresa",
+      ...Array(12).fill("Não foi dessa vez")
+    ];
+
+    const emojis = ["🐟","🍣","🍤","🍥","🍡"];
+    const fish = [];
+
+    function createFish() {
+      return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        speed: 4 + Math.random() * 3, // MAIS RÁPIDO
+        size: 40 + Math.random() * 15,
+        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        angle: 0
+      };
+    }
+    for(let i=0;i<7;i++) fish.push(createFish());
+
+    function drawFish(f) {
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(Math.sin(f.angle) * 0.3);
+      ctx.font = f.size+"px Arial";
+      ctx.fillText(f.emoji, 0, 0);
+      ctx.restore();
+    }
+
+    function updateFish(f) {
+      f.x += f.speed;
+      f.angle += 0.1;
+      if(f.x > canvas.width+50) {
+        f.x = -50;
+        f.y = Math.random() * canvas.height;
+      }
+    }
+
+    function gameLoop() {
+      if (gameOver) return;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      fish.forEach(f => {
+        updateFish(f);
+        drawFish(f);
+      });
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+
+    canvas.addEventListener("click", e=>{
+      if(!attempts || gameOver) return;
+      const x = e.offsetX, y = e.offsetY;
+
+      // efeito visual no clique
+      const effect = document.createElement("div");
+      effect.className = "clickEffect";
+      effect.innerText = "✨";
+      effect.style.left = (e.pageX - 10) + "px";
+      effect.style.top = (e.pageY - 20) + "px";
+      document.body.appendChild(effect);
+      setTimeout(()=>effect.remove(),800);
+
+      const caught = fish.find(f=> Math.hypot(f.x-x,f.y-y)<f.size);
+      if(caught){
+        document.getElementById("catchSound").play();
+        let now = Date.now();
+        let prize = prizes[Math.floor(Math.random()*prizes.length)];
+
+        // Só libera prêmios reais após 10s
+        if (now - startTime < minWinTime) {
+          prize = "Não foi dessa vez";
+        }
+
+        if(prize==="Não foi dessa vez"){
+          speech.innerText="Quase, miauuu!";
+          speech.style.display="block";
+          setTimeout(()=>speech.style.display="none",1500);
+        } else {
+          document.getElementById("winSound").play();
+          prizeBox.innerText="🎉 Parabéns! Você ganhou: "+prize;
+          prizeBox.style.animation="pop 0.6s forwards";
+          speech.innerText="Uau! Você conseguiu 🎉";
+          speech.style.display="block";
+          confetti({
+            particleCount: 150,
+            spread: 90,
+            origin: { y: 0.6 },
+            colors: ["#FFD700","#FFFACD","#FF4500"]
+          });
+          attempts = false;
+          gameOver = true;
+          localStorage.setItem("lastWinDate", today);
+          clearInterval(timerInterval);
+        }
+      }
+    });
+
+    const timerInterval = setInterval(()=>{
+      if (timeLeft <= 0 && !gameOver) {
+        gameOver = true;
+        prizeBox.innerText="Não foi dessa vez 💦";
+        prizeBox.style.animation="pop 0.6s forwards";
+        speech.innerText="Miauu... não foi dessa vez 😿";
+        speech.style.display="block";
+        document.getElementById("failSound").play();
+        clearInterval(timerInterval);
+      } else if (!gameOver) {
+        timeLeft--;
+        timerEl.innerText = "Tempo: " + timeLeft + "s";
+      }
+    },1000);
+  </script>
+</body>
+</html>
